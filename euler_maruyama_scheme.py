@@ -49,7 +49,7 @@ u=np.zeros((nt,nx))
 u[0] = u0(x)
 
 for n in range(1,nt):
-    u[n] = u[n-1] - 1j*np.dot(laplacien(nx),u[n-1]) - 1j*tau*np.dot(V(x),u[n-1]) - 1j*alpha*(Wq((n+1)*tau,x)-Wq(n*tau,x))
+    u[n] = u[n-1] - 1j*np.dot(laplacien(nx),u[n-1]) - 1j*tau*np.dot(V(x),u[n-1]) - 1j*alpha*(Wq((n)*tau,x)-Wq((n-1)*tau,x))
 
 mass = np.linalg.norm(u, ord=2, axis=1)
 
