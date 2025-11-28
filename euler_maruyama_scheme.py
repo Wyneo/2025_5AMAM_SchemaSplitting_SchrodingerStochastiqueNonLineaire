@@ -45,13 +45,20 @@ nt = int(1/0.1)
 x = np.linspace(0,2*np.pi,nx)
 t = np.linspace(0,T,nt)
 
-u=np.zeros((nt,nx))
-u[0] = u0(x)
-
+u=np.zeros((nt,nx+1))
+u[0,1:nx+1] = u0(x)
+u[0,0]=u[0,-1] #pour condition périodique : ajout factice de la dernière valeure avant la première
+u_vrai=np.zeros((nt,nx))
+u_vrai[0]=u0(x)
 for n in range(1,nt):
-    u[n] = u[n-1] - 1j*np.dot(laplacien(nx),u[n-1]) - 1j*tau*np.dot(V(x),u[n-1]) - 1j*alpha*(Wq((n)*tau,x)-Wq((n-1)*tau,x))
+    v = np.append(V(x)[-1],V(x))
+    deltaW = Wq(n*tau,x)-Wq((n-1)*tau,x)
+    deltaW = np.append(deltaW[-1],deltaW)
+    u[n] = u[n-1] - 1j*np.dot(laplacien(nx+1),u[n-1]) - 1j*tau*np.dot(v,u[n-1]) - 1j*alpha*deltaW
+    u[n,0]=u[n,-1] #pour périodicité
+    u_vrai[n]=np.delete(u[n],0) #stocke pas valeure fictive
 
-mass = np.linalg.norm(u, ord=2, axis=1)
+mass = np.linalg.norm(u_vrai, ord=2, axis=1)
 
 plt.plot(t, mass)
 plt.show()
