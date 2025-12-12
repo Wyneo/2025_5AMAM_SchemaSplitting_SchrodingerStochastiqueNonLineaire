@@ -84,10 +84,3 @@ plt.plot(t,mass)
 plt.title("Evolution de la masse en fonction de t")
 
 plt.show()
-
-#PAS REINCREMENTER W
-#DIVISER LAPLACIEN PAR H^2
-
-#PLOT MASSE PAS BONNE FORMULE 
-#ek EN FONCTION DE X OU DE T
-#TAILLE DE INCREMENT WIENER
