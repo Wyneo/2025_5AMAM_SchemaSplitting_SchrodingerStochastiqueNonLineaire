@@ -40,10 +40,10 @@ def Wq(t,x):
     return Wq
 
 alpha = 1
-nx = 100
+nx = 2**8
 tau = 0.1
 T = 1
-nt = int(T/0.1)
+nt = int(T/tau)
 x = np.linspace(0,2*np.pi,nx)
 t = np.linspace(0,T,nt)
 
