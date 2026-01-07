@@ -20,10 +20,10 @@ def V(x): #external potential
 
 def beta(t):
     np.random.seed(42)
-    n=np.size(t)
+    n = np.size(t)
     dt = t/n
     dW = np.sqrt(dt)*np.random.normal(0,1,n)
-    #W=np.cumsum(dW)
+    dW=np.cumsum(dW)
     return dW
 
 def gamma(k):
@@ -33,9 +33,9 @@ def e(k,x):
     return (1/np.sqrt(2*np.pi))*np.exp(1j*k*x)
 
 def Wq(t,x):
-    Wq=np.zeros(np.size(t))
-    for k in range(100):
-        Wq = Wq + gamma(k)*np.dot(beta(t),e(k,t))
+    Wq = np.zeros(np.size(t))
+    for k in range(np.size(t)):
+        Wq[k] = Wq[k-1] + gamma(k)*beta(t)[k]*e(k,x[k])
     return Wq
 
 def noyau_chaleur(t,x):
@@ -43,7 +43,7 @@ def noyau_chaleur(t,x):
     #return np.exp(-1j*x/(2*t))/np.sqrt(2*np.pi*t)
 
 alpha = 1
-nx = 100
+nx = 10
 tau = 0.1
 T = 1
 nt = int(T/tau)
