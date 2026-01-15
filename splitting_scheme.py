@@ -2,9 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def u0(x):
-    u0=np.zeros(np.size(x))
-    for i in range(np.size(x)):
-        u0[i]=2/(2-np.cos(x[i]))
+    u0 = 2.0/(2.0 - np.cos(x))
     return u0
 
 def laplacien(nx):
@@ -13,78 +11,83 @@ def laplacien(nx):
     return l
 
 def V(x): #external potential
-    V=np.zeros(np.size(x))
-    for i in range(np.size(x)):
+    V=np.zeros(np.shape(x)[0])
+    for i in range(np.shape(x)[0]):
         V[i]=3/(5-4*np.cos(x[i]))
     return V
 
-def beta(t):
-    np.random.seed(42)
-    n = np.size(t)
-    dt = t/n
-    dW = np.sqrt(dt)*np.random.normal(0,1,n)
-    dW=np.cumsum(dW)
-    return dW
+def beta_modes(nt, nx, tau, seed=42):
+    rng = np.random.default_rng(seed)
+    dB = rng.normal(scale=np.sqrt(tau), size=(nt, nx))
+    dB[0, :] = 0.0
+    return dB
 
 def gamma(k):
-    return 1/(1+k*k)
+    return 1.0/(1.0 + (k**2))
 
-def e(k,x):
-    return (1/np.sqrt(2*np.pi))*np.exp(1j*k*x)
+def e(k, x):
+    # vectorized: k shape (K,), x shape (nx,) -> returns (K, nx)
+    return (1.0/np.sqrt(2.0*np.pi)) * np.exp(1j * np.outer(k, x))
 
-def Wq(t,x):
-    Wq = np.zeros(np.size(t))
-    for k in range(np.size(t)):
-        Wq[k] = Wq[k-1] + gamma(k)*beta(t)[k]*e(k,x[k])
-    return Wq
+def Wq(nt, tau, x, seed=42):
+    nx = np.shape(x)[0]
+    k_idx = np.arange(nx)
+    beta_k = beta_modes(nt, nx, tau, seed=seed)  # shape (nt, nx)
+    g = gamma(k_idx)  # shape (nx,)
+    E = e(k_idx, x)  # shape (nx, nx)
+    W = np.einsum('nk,kj->nj', beta_k * g[None, :], E)
+    return W
 
-def noyau_chaleur(t,x):
-    return np.exp(-1j*t*laplacien(np.size(x)+2))
-    #return np.exp(-1j*x/(2*t))/np.sqrt(2*np.pi*t)
+def noyau_chaleur(dt, x):
+    nx = np.shape(x)[0]
+    k = np.fft.fftfreq(nx, d=(2.0*np.pi)/nx) * 2.0*np.pi
+    return np.exp(-1j * (k**2) * dt)
 
-alpha = 1
-nx = 10
+alpha = 1.0
+nx = 2**8
 tau = 0.1
-T = 1
-nt = int(T/tau)
-x = np.linspace(0,2*np.pi,nx)
-t = np.linspace(0,T,nt)
+T = 1.0
+nt = int(np.floor(T/tau)) + 1
+x = np.linspace(0, 2*np.pi, nx, endpoint=False)
+t = np.linspace(0, tau*(nt-1), nt)
 
-u=np.zeros((nt,nx+2))
+seed = 42
+
+W = Wq(nt, tau, x, seed=seed)  # shape (nt, nx)
+
+u = np.zeros((nt, nx+2), dtype=complex)
 u[0,1:nx+1] = u0(x)
-u[0,0] = u[0,nx] #pour condition périodique : ajout factice de la dernière valeure avant la première
+u[0,0] = u[0,nx]
 u[0,nx+1] = u[0,1]
-u_vrai = np.zeros((nt,nx))
 
-incrementWiener = Wq(t,x)
-incrementWiener = np.append(incrementWiener[nt-1],incrementWiener)
-incrementWiener = np.append(incrementWiener,incrementWiener[1])
+Vx = V(x)
+S = noyau_chaleur(tau, x)
 
-for n in range(1,nt):
-    v = np.append(V(x)[nx-1],V(x))
-    v = np.append(v,V(x)[0])
+for n in range(1, nt):
+    u_prev = u[n-1, 1:nx+1]
+    ubis = np.exp(-1j * tau * Vx) * u_prev
+    ubis = ubis - 1j * alpha * W[n]
+    u_hat = np.fft.fft(ubis)
+    u_lin = np.fft.ifft(S * u_hat)
+    
+    u[n, 1:nx+1] = u_lin
+    u[n, 0] = u[n, nx]
+    u[n, nx+1] = u[n, 1]
 
-    ubis = np.exp(-1j*tau*v*u[n-1])*u[n-1]
-
-    S = noyau_chaleur(n*tau,x)
-    u[n] = np.dot(np.fft.fft(S),np.fft.fft(ubis-1j*alpha*incrementWiener[n]))
-
-    u[n,0] = u[n,nx] #pour périodicité
-    u[n,nx+1] = u[n,1]
-
-u_vrai = np.delete(u,[0,nx+1],1) #on garde pas valeures fictives
+u_vrai = u[:, 1:nx+1]
+dx = 2*np.pi/nx
+mass = np.sum(np.abs(u_vrai)**2, axis=1) * dx
 
 plt.figure(1)
-plt.plot(x,u_vrai[0],x,u_vrai[nt-1])
+plt.plot(x, np.real(u_vrai[0]), x, np.real(u_vrai[-1]))
 plt.legend(["Temps initial", "Temps final"])
 plt.title("Graphique de u en fonction de x")
 plt.xlabel("x")
 plt.ylabel("u")
 
-mass = np.linalg.norm(u_vrai, ord=2, axis=1)**2
-
 plt.figure(2)
-plt.plot(t,mass)
+plt.plot(t, mass)
 plt.title("Evolution de la masse en fonction de t")
 
+plt.tight_layout()
 plt.show()
