@@ -10,15 +10,15 @@ def laplacien(nx):
     l=l/(2*np.pi/nx)**2
     return l
 
-def V(x): #external potential
+def V(x): # external potential
     V=np.zeros(np.shape(x)[0])
     for i in range(np.shape(x)[0]):
         V[i]=3/(5-4*np.cos(x[i]))
     return V
 
-def beta_modes(nt, nx, tau, seed=42):
+def beta(nt, nx, tau, seed=42):
     rng = np.random.default_rng(seed)
-    dB = rng.normal(scale=np.sqrt(tau), size=(nt, nx))
+    dB = rng.normal(0, np.sqrt(tau), size=(nt, nx))
     dB[0, :] = 0.0
     return dB
 
@@ -26,16 +26,16 @@ def gamma(k):
     return 1.0/(1.0 + (k**2))
 
 def e(k, x):
-    # vectorized: k shape (K,), x shape (nx,) -> returns (K, nx)
+    # k shape (K,), x shape (nx,) -> returns (K, nx)
     return (1.0/np.sqrt(2.0*np.pi)) * np.exp(1j * np.outer(k, x))
 
 def Wq(nt, tau, x, seed=42):
     nx = np.shape(x)[0]
-    k_idx = np.arange(nx)
-    beta_k = beta_modes(nt, nx, tau, seed=seed)  # shape (nt, nx)
-    g = gamma(k_idx)  # shape (nx,)
-    E = e(k_idx, x)  # shape (nx, nx)
-    W = np.einsum('nk,kj->nj', beta_k * g[None, :], E)
+    k = np.arange(nx)
+    beta_k = beta(nt, nx, tau, seed=seed)  # shape (nt, nx)
+    g = gamma(k)  # shape (nx,)
+    E = e(k, x)  # shape (nx, nx)
+    W = np.sum(beta_k[:, :, None] * g[None, :, None] * E[None, :, :], axis=1)
     return W
 
 def noyau_chaleur(dt, x):
@@ -65,7 +65,7 @@ S = noyau_chaleur(tau, x)
 
 for n in range(1, nt):
     u_prev = u[n-1, 1:nx+1]
-    ubis = np.exp(-1j * tau * Vx) * u_prev
+    ubis = np.exp(-1j * tau * Vx * u_prev) * u_prev # Attention !!
     ubis = ubis - 1j * alpha * W[n]
     u_hat = np.fft.fft(ubis)
     u_lin = np.fft.ifft(S * u_hat)
