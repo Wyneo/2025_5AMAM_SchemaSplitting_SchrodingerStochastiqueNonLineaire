@@ -53,7 +53,7 @@ t = np.linspace(0, tau*(nt-1), nt)
 
 nc = 100 # nombre de réalisations pour monte carlo
 mass = np.zeros((nc, nt))
-
+u_verif = np.zeros((nc, nx), dtype=complex)
 for i in range(nc): # Monte Carlo
     u = np.zeros((nt, nx+2), dtype=complex)
     u[0,1:nx+1] = u0(x)
@@ -76,6 +76,13 @@ for i in range(nc): # Monte Carlo
         u[n, 1:nx+1] = u_lin
         u[n, 0] = u[n, nx]
         u[n, nx+1] = u[n, 1]
+
+    u_verif[i] = u[n, 1:nx+1]
+    ubis_verif = np.exp(-1j*tau*Vx)*u_verif[i]
+    ubis_verif = ubis_verif - 1j*alpha*W[n]
+    uhat_verif = np.fft.fft(ubis_verif)
+    u_lin_verif = np.fft.ifft(S * uhat_verif)
+    u_verif[i] = u_lin_verif
 
     #u_vrai = u[:, 1:nx+1]
     mass[i] = np.linalg.norm(u[:, 1:nx+1], ord=2, axis=1)**2
@@ -100,7 +107,8 @@ for n in range(1, nt):
 
 plt.figure(1)
 # plt.plot(x, np.real(u[0,1:nx+1]), x, np.real(u[-1, 1:nx+1]))
-plt.plot(x, np.real(u[0,1:nx+1]), x, np.real(u[-1, 1:nx+1]), x, np.real(u_exacte[-1]), '--')
+# plt.plot(x, np.real(u[0,1:nx+1]), x, np.real(u[-1, 1:nx+1]), x, np.real(u_exacte[-1]), '--')
+plt.plot(x, np.real(u[0,1:nx+1]), x, np.real(u[-1, 1:nx+1]), x, np.real(u_verif[-1]), '--')
 # plt.legend(["Temps initial", "Temps final"])
 plt.legend(["Temps initial", "Temps final", "Solution exacte"])
 plt.title("Graphique de u en fonction de x")
