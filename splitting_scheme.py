@@ -39,85 +39,141 @@ def Wq(nt, tau, nx, x):
 def noyau_chaleur(dt, nx):
     k = np.fft.fftfreq(nx, d=(2.0*np.pi)/nx) * 2.0*np.pi
     return np.exp(-1j * (k**2) * dt)
-def noyau_chaleur2(dt, x):
-    return 1.0/((4*np.pi*1j*dt)**(1/2)) * np.exp(-np.abs(x)**2 / (4*1j*dt))
-
 
 alpha = 1.0
 nx = 2**8
 tau = 0.1
-T = 1
-nt = int(np.floor(T/tau))
+T = 1 #2
+nt = int(np.floor(T/tau)) + 1
 x = np.linspace(0, 2*np.pi, nx, endpoint=False)
 t = np.linspace(0, tau*(nt-1), nt)
 
-nc = 100 # nombre de réalisations pour monte carlo
-mass = np.zeros((nc, nt))
-u_verif = np.zeros((nc, nx), dtype=complex)
-for i in range(nc): # Monte Carlo
+Vx = V(x)
+S = noyau_chaleur(tau, nx)
+
+nc = 500 # nombre de réalisations pour monte carlo
+mass_splitting = np.zeros((nc, nt))
+mass_duhamel = np.zeros((nc, nt))
+
+# Boucle Monte Carlo pour les calculs d'espérance
+for i in range(nc): 
+    # Initialisation
     u = np.zeros((nt, nx+2), dtype=complex)
     u[0,1:nx+1] = u0(x)
     u[0,0] = u[0,nx]
     u[0,nx+1] = u[0,1]
 
-    Vx = V(x)
-    W = Wq(nt, tau, nx, x)  # shape(nt, nx)
-    S = noyau_chaleur(tau, nx)
-    S2 = noyau_chaleur2(tau, nx)
-    #print(np.shape(S), np.shape(S2))
+    u_duhamel = np.zeros((nt, nx+2), dtype=complex) # Calcul de la solution exacte (formule de Duhamel)
+    u_duhamel[0,1:nx+1] = u0(x)
+    u_duhamel[0,0] = u_duhamel[0,nx]
+    u_duhamel[0,nx+1] = u_duhamel[0,1]
+
+    W = Wq(nt, tau, nx, x) # shape(nt, nx)
 
     for n in range(1, nt):
+        # Schéma de splitting
         u_prev = u[n-1, 1:nx+1]
-        ubis = np.exp(-1j*tau*Vx)*u_prev
-        ubis = ubis - 1j*alpha*W[n]
-        u_hat = np.fft.fft(ubis)
-        u_lin = np.fft.ifft(S * u_hat)
-    
+        u_bis = np.exp(-1j*tau*Vx)*u_prev - 1j*alpha*W[n]
+        u_lin = np.fft.ifft(S * np.fft.fft(u_bis))
         u[n, 1:nx+1] = u_lin
         u[n, 0] = u[n, nx]
         u[n, nx+1] = u[n, 1]
 
-    u_verif[i] = u[n, 1:nx+1]
-    ubis_verif = np.exp(-1j*tau*Vx)*u_verif[i]
-    ubis_verif = ubis_verif - 1j*alpha*W[n]
-    uhat_verif = np.fft.fft(ubis_verif)
-    u_lin_verif = np.fft.ifft(S * uhat_verif)
-    u_verif[i] = u_lin_verif
+        # Formule de Duhamel
+        temps = t[n]
+        integrale1 = np.zeros(nx, dtype=complex)
+        integrale2 = np.zeros(nx, dtype=complex)
+        for j in range(1, n+1):
+            s = tau*j
+            integrale1 += np.fft.ifft(noyau_chaleur(temps-s, nx)*np.fft.fft(Vx*u_duhamel[j,1:nx+1])) * tau
+            integrale2 += np.fft.ifft(noyau_chaleur(temps-s, nx)*np.fft.fft(W[j])) * tau
+        u_duhamel[n, 1:nx+1] = np.fft.ifft(noyau_chaleur(temps, nx)*np.fft.fft(u0(x))) - 1j*integrale1 - 1j*alpha*integrale2
+        u_duhamel[n, 0] = u_duhamel[n, nx]
+        u_duhamel[n, nx+1] = u_duhamel[n, 1]
 
-    #u_vrai = u[:, 1:nx+1]
-    mass[i] = np.linalg.norm(u[:, 1:nx+1], ord=2, axis=1)**2
+    mass_splitting[i] = np.linalg.norm(u[:, 1:nx+1], ord=2, axis=1)**2
+    mass_duhamel[i] = np.linalg.norm(u_duhamel[:, 1:nx+1], ord=2, axis=1)**2
 
-E_mass = 1/nc * np.sum(mass, axis=0)
+E_mass_splitting = 1/nc * np.sum(mass_splitting, axis=0)
+E_mass_duhamel = 1/nc * np.sum(mass_duhamel, axis=0)
 
-# Calcul de la solution exacte pour comparaison
-W = Wq(nt, tau, nx, x)
-u_exacte = np.zeros((nt, nx), dtype=complex)
-u_exacte[0] = u0(x)
+# Implémentation du schéma déterministe (alpha = 0)
+u_det = np.zeros((nt, nx+2), dtype=complex)
+u_det[0,1:nx+1] = u0(x)
+u_det[0,0] = u_det[0,nx]
+u_det[0,nx+1] = u_det[0,1]
+
 for n in range(1, nt):
-    integrale1 = 0
-    integrale2 = 0
-    ds = tau
-    temp = t[n]
-    for i in range(nt):
-        s = tau*i
-        integrale1 += noyau_chaleur(temp-s, nx)*V(x)*u_exacte[i]*ds
-        integrale2 += noyau_chaleur(temp-s, nx)*u_exacte[i]*W[i] # *u_exacte[i] ????
-        ds += tau
-    u_exacte[n] = noyau_chaleur(temp, nx)*u0(x) - 1j*integrale1 - 1j*alpha*integrale2
+    # Schéma déterministe
+    u_prev_det = u_det[n-1, 1:nx+1]
+    u_bis_det = np.exp(-1j*tau*Vx)*u_prev_det
+    u_lin_det = np.fft.ifft(S * np.fft.fft(u_bis_det))
+
+    u_det[n, 1:nx+1] = u_lin_det
+    u_det[n, 0] = u_det[n, nx]
+    u_det[n, nx+1] = u_det[n, 1]
+
+mass_det = np.linalg.norm(u_det[:, 1:nx+1], ord=2, axis=1)**2
+
+# # Test 1 : Vérification de la conservation de la masse dans le cas déterministe
+# print("\nTest 1 : Conservation de la masse dans le cas déterministe")
+# print("-" * 40)
+# print(f"Masse initiale (déterministe) : {mass_det[0]:.6e}")
+# print(f"Masse finale (déterministe)   : {mass_det[-1]:.6e}")
+# print(f"Variation relative            : {abs(mass_det[-1] - mass_det[1]) / abs(mass_det[1]) * 100:.4f}%")
+
+# # Test 2: Comparaison stochastique vs déterministe
+# print("\nTest 2 : Comparaison stochastique vs déterministe")
+# print("-" * 40)
+# print(f"E[Masse finale] (stochastique) : {E_mass_splitting[-1]:.6e}")
+# print(f"Masse finale (déterministe)    : {mass_det[-1]:.6e}")
+# print(f"Différence relative            : {abs(E_mass_splitting[-1] - mass_det[-1]) / abs(mass_det[-1]) * 100:.4f}%")
+
+# # Test 3: Vérifier que les deux méthodes donnent le même résultat en l'absence de bruit
+# print("\nTest 3 : Vérification de stabilité de la masse")
+# print("-" * 40)
+# print(f"E[Masse initiale] (stochastique) : {E_mass_splitting[0]:.6e}")
+# print(f"E[Masse finale] (stochastique)   : {E_mass_splitting[-1]:.6e}")
+# print(f"Variation E[M] relative          : {abs(E_mass_splitting[-1] - E_mass_splitting[0]) / abs(E_mass_splitting[0]) * 100:.4f}%")
+
+# # Test 4: Visualiser la solution
+# print("\nTest 4 : Comparaison des solutions")
+# print("-" * 40)
+# erreur_L2_final = np.linalg.norm(u[-1, 1:nx+1] - u_duhamel[-1, 1:nx+1], ord=2)
+# print(f"Erreur L² entre schéma et solution exacte : {erreur_L2_final:.6e}")
 
 plt.figure(1)
-# plt.plot(x, np.real(u[0,1:nx+1]), x, np.real(u[-1, 1:nx+1]))
-# plt.plot(x, np.real(u[0,1:nx+1]), x, np.real(u[-1, 1:nx+1]), x, np.real(u_exacte[-1]), '--')
-plt.plot(x, np.real(u[0,1:nx+1]), x, np.real(u[-1, 1:nx+1]), x, np.real(u_verif[-1]), '--')
-# plt.legend(["Temps initial", "Temps final"])
-plt.legend(["Temps initial", "Temps final", "Solution exacte"])
+plt.plot(x, np.real(u[0,1:nx+1]), label="Condition initiale", linewidth=1.5)
+plt.plot(x, np.real(u[-1, 1:nx+1]), "red", label="Solution splitting", linewidth=1.5)
+plt.plot(x, np.real(u_det[-1, 1:nx+1]), "--r", label="Solution déterministe", linewidth=1.5)
+plt.plot(x, np.real(u_duhamel[-1, 1:nx+1]), "green", label="Solution duhamel", linewidth=1.5)
+plt.legend()
 plt.title("Graphique de u en fonction de x")
 plt.xlabel("x")
 plt.ylabel("u")
+plt.grid(True, alpha=0.3)
 
 plt.figure(2)
-plt.plot(t, E_mass)
-plt.title("Evolution de la masse en fonction de t")
+plt.plot(t, mass_det, "--r", label="Cas déterministe (alpha=0)", linewidth=1)
+plt.plot(t, E_mass_splitting, "red", label="Espérance stochastique Splitting", linewidth=1.5)
+plt.plot(t, E_mass_duhamel, "green", label="Espérance stochastique Duhamel", linewidth=1.5)
+plt.xlabel("Temps")
+plt.ylabel("Masse L2")
+plt.title("Comparaison des espérances") #  : Cas déterministe vs stochastique
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+plt.figure(3)
+plt.plot(x, np.real(u[0, 1:nx+1]), label="Temps 0", linewidth=1.5)
+plt.plot(x, np.real(u[5, 1:nx+1]), label="Temps "+str(5*tau), linewidth=1.5)
+plt.plot(x, np.real(u[10, 1:nx+1]), label="Temps "+str(10*tau), linewidth=1.5)
+# plt.plot(x, np.real(u[15, 1:nx+1]), label="Temps "+str(15*tau), linewidth=1.5)
+# plt.plot(x, np.real(u[20, 1:nx+1]), label="Temps "+str(20*tau), linewidth=1.5)
+plt.legend()
+plt.title("Graphique de u au fil de t")
+plt.xlabel("x")
+plt.ylabel("u")
+plt.grid(True, alpha=0.3)
 
 plt.tight_layout()
 plt.show()
