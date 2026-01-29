@@ -63,21 +63,34 @@ for i in range(nc): # Monte Carlo
         u[n, 0] = u[n, nx] # pour périodicité
         u[n, nx+1] = u[n, 1]
     
-    u_vrai = u[:, 1:nx+1] # on garde pas valeures fictives
-    mass[i] = np.linalg.norm(u_vrai, ord=2, axis=1)**2
+    # mass[i] = np.linalg.norm(u[:, 1:nx+1], ord=2, axis=1)**2
+    h = 2.0*np.pi/nx
+    mass[i] = h*np.sum(np.abs(u[:, 1:nx+1])**2, axis=1)
 
 E_mass = 1/nc * np.sum(mass, axis=0)
 
+k = np.arange(nx)
+TrQ = np.sum(gamma(k)**2)
+E_mass_theorique = E_mass[0] + t*(alpha**2)*TrQ
+
 #Augmenter T pour mieux voir la périodicité
 plt.figure(1)
-plt.plot(x, np.real(u_vrai[0]), x, np.real(u_vrai[-1]))
-plt.legend(["Temps initial", "Temps final"])
+plt.plot(x, np.real(u[0, 1:nx+1]), label="Temps initial", linewidth=1.5)
+plt.plot(x, np.real(u[-1, 1:nx+1]), label="Temps final", linewidth=1.5)
+plt.legend()
 plt.title("Graphique de u en fonction de x")
 plt.xlabel("x")
 plt.ylabel("u")
+plt.grid(True, alpha=0.3)
 
 plt.figure(2)
-plt.plot(t,E_mass)
-plt.title("Evolution de la masse en fonction de t")
+plt.plot(t, E_mass, label="Espérance Euler-Maruyama", linewidth=1.5)
+plt.plot(t, E_mass_theorique, label="Espérance théorique", linewidth=1.5)
+plt.legend()
+plt.title("Comparaison des espérances")
+plt.xlabel("Temps")
+plt.ylabel("Masse")
+plt.grid(True, alpha=0.3)
 
+plt.tight_layout()
 plt.show()

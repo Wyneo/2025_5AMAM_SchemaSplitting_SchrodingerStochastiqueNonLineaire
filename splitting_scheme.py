@@ -91,11 +91,26 @@ for i in range(nc):
         u_duhamel[n, 0] = u_duhamel[n, nx]
         u_duhamel[n, nx+1] = u_duhamel[n, 1]
 
-    mass_splitting[i] = np.linalg.norm(u[:, 1:nx+1], ord=2, axis=1)**2
-    mass_duhamel[i] = np.linalg.norm(u_duhamel[:, 1:nx+1], ord=2, axis=1)**2
+    h = 2.0*np.pi/nx
+    mass_splitting[i] = h*np.sum(np.abs(u[:, 1:nx+1])**2, axis=1)
+    mass_duhamel[i] = h*np.sum(np.abs(u_duhamel[:, 1:nx+1])**2, axis=1)
+    # mass_splitting[i] = np.linalg.norm(u[:, 1:nx+1], ord=2, axis=1)**2
+    # mass_duhamel[i] = np.linalg.norm(u_duhamel[:, 1:nx+1], ord=2, axis=1)**2
 
 E_mass_splitting = 1/nc * np.sum(mass_splitting, axis=0)
 E_mass_duhamel = 1/nc * np.sum(mass_duhamel, axis=0)
+
+k = np.arange(nx)
+TrQ = np.sum(gamma(k)**2)
+E_mass_theorique = E_mass_splitting[0] + t*(alpha**2)*TrQ
+
+#print(f"Tr(Q) approximé sur {nx} modes : {TrQ:.6e}")
+# print("\nVérification de l'espérance de la masse (schéma splitting):")
+# print("-"*50)
+# print(f"Masse initiale (E[M(u0)]) : {E_mass_splitting[0]:.6e}")
+# print(f"Masse finale (numérique)  : {E_mass_splitting[-1]:.6e}")
+# print(f"Masse finale (théorique)  : {E_mass_theorique[-1]:.6e}")
+# print(f"Différence finale         : {E_mass_splitting[-1] - E_mass_theorique[-1]:.6e}\n")
 
 # Implémentation du schéma déterministe (alpha = 0)
 u_det = np.zeros((nt, nx+2), dtype=complex)
@@ -113,7 +128,8 @@ for n in range(1, nt):
     u_det[n, 0] = u_det[n, nx]
     u_det[n, nx+1] = u_det[n, 1]
 
-mass_det = np.linalg.norm(u_det[:, 1:nx+1], ord=2, axis=1)**2
+mass_det = h * np.sum(np.abs(u_det[:, 1:nx+1])**2, axis=1)
+# mass_det = np.linalg.norm(u_det[:, 1:nx+1], ord=2, axis=1)**2
 
 # # Test 1 : Vérification de la conservation de la masse dans le cas déterministe
 # print("\nTest 1 : Conservation de la masse dans le cas déterministe")
@@ -139,14 +155,15 @@ mass_det = np.linalg.norm(u_det[:, 1:nx+1], ord=2, axis=1)**2
 # # Test 4: Visualiser la solution
 # print("\nTest 4 : Comparaison des solutions")
 # print("-" * 40)
-# erreur_L2_final = np.linalg.norm(u[-1, 1:nx+1] - u_duhamel[-1, 1:nx+1], ord=2)
-# print(f"Erreur L² entre schéma et solution exacte : {erreur_L2_final:.6e}")
+erreur_L2_final = np.linalg.norm(u[-1, 1:nx+1] - u_duhamel[-1, 1:nx+1], ord=2)
+print("Erreur schéma splitting et formule duhamel (t=1) :", erreur_L2_final)
+print("Différence mass :", np.linalg.norm(E_mass_splitting - E_mass_theorique))
 
 plt.figure(1)
 plt.plot(x, np.real(u[0,1:nx+1]), label="Condition initiale", linewidth=1.5)
-plt.plot(x, np.real(u[-1, 1:nx+1]), "red", label="Solution splitting", linewidth=1.5)
-plt.plot(x, np.real(u_det[-1, 1:nx+1]), "--r", label="Solution déterministe", linewidth=1.5)
-plt.plot(x, np.real(u_duhamel[-1, 1:nx+1]), "green", label="Solution duhamel", linewidth=1.5)
+plt.plot(x, np.real(u[-1, 1:nx+1]), "r", label="Solution splitting", linewidth=1.5)
+plt.plot(x, np.real(u_det[-1, 1:nx+1]), "g", label="Solution déterministe", linewidth=1.5)
+plt.plot(x, np.real(u_duhamel[-1, 1:nx+1]), "--r", label="Solution duhamel", linewidth=1.5)
 plt.legend()
 plt.title("Graphique de u en fonction de x")
 plt.xlabel("x")
@@ -154,21 +171,20 @@ plt.ylabel("u")
 plt.grid(True, alpha=0.3)
 
 plt.figure(2)
-plt.plot(t, mass_det, "--r", label="Cas déterministe (alpha=0)", linewidth=1)
+plt.plot(t, mass_det, "g", label="Cas déterministe (alpha=0)", linewidth=1.5)
 plt.plot(t, E_mass_splitting, "red", label="Espérance stochastique Splitting", linewidth=1.5)
-plt.plot(t, E_mass_duhamel, "green", label="Espérance stochastique Duhamel", linewidth=1.5)
+plt.plot(t, E_mass_duhamel, "--r", label="Espérance stochastique Duhamel", linewidth=1.5)
+plt.plot(t, E_mass_theorique, ":k", label="Espérance théorique", linewidth=1.5)
 plt.xlabel("Temps")
-plt.ylabel("Masse L2")
-plt.title("Comparaison des espérances") #  : Cas déterministe vs stochastique
+plt.ylabel("Masse")
+plt.title("Comparaison des espérances")
 plt.legend()
 plt.grid(True, alpha=0.3)
 
 plt.figure(3)
 plt.plot(x, np.real(u[0, 1:nx+1]), label="Temps 0", linewidth=1.5)
 plt.plot(x, np.real(u[5, 1:nx+1]), label="Temps "+str(5*tau), linewidth=1.5)
-plt.plot(x, np.real(u[10, 1:nx+1]), label="Temps "+str(10*tau), linewidth=1.5)
-# plt.plot(x, np.real(u[15, 1:nx+1]), label="Temps "+str(15*tau), linewidth=1.5)
-# plt.plot(x, np.real(u[20, 1:nx+1]), label="Temps "+str(20*tau), linewidth=1.5)
+plt.plot(x, np.real(u[-1, 1:nx+1]), label="Temps "+str(T), linewidth=1.5)
 plt.legend()
 plt.title("Graphique de u au fil de t")
 plt.xlabel("x")
