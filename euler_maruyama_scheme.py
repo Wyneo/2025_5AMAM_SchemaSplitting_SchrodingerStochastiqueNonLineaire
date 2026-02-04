@@ -73,7 +73,7 @@ for i in range(nc):
 
 E_mass = 1/nc * np.sum(mass, axis=0)
 
-#Formule de la masse
+#E(M) théorique 
 k = np.arange(nx)
 TrQ = np.sum(gamma(k)**2)
 E_mass_theorique = E_mass[0] + t*(alpha**2)*TrQ
@@ -107,8 +107,8 @@ plt.ylabel("u")
 plt.grid(True, alpha=0.3)
 
 plt.subplot(224)
-plt.plot(t, E_mass, label="Espérance Euler-Maruyama", linewidth=1.5)
-plt.plot(t, E_mass_theorique, label="Espérance théorique", linewidth=1.5)
+plt.plot(t, E_mass, "+r", label="Espérance Euler-Maruyama", linewidth=1.5)
+plt.plot(t, E_mass_theorique, ":k", label="Espérance théorique", linewidth=1.5)
 plt.legend(fontsize="small")
 plt.title("Comparaison des espérances")
 plt.xlabel("Temps")
