@@ -62,7 +62,7 @@ for i in range(nc):
     # Initialisation
     u = np.zeros((nt, nx+2), dtype=complex)
     u[0,1:nx+1] = u0(x)
-    u[0,0] = u[0,nx]
+    u[0,0] = u[0,nx] # pour condition périodique : ajout factice de la dernière valeure avant la première
     u[0,nx+1] = u[0,1]
 
     u_duhamel = np.zeros((nt, nx+2), dtype=complex)
@@ -76,11 +76,6 @@ for i in range(nc):
     u_sEXP[0,nx+1] = u_sEXP[0,1]
 
     W = Wq(nt, tau, nx, x) # shape(nt, nx)
-
-    ################ ATTENTION ####################
-    # print(np.linalg.norm(np.abs(u[0, 1:nx+1]))**2)
-    # print(((2.0*np.pi)/nx)*np.sum(np.abs(u[0, 1:nx+1])**2))
-    # print(np.sum(np.abs(u[0, 1:nx+1])**2))
 
     for n in range(1, nt):
         # Schéma de splitting
@@ -115,8 +110,6 @@ for i in range(nc):
     mass_splitting[i] = dx*np.sum(np.abs(u[:, 1:nx+1])**2, axis=1)
     mass_duhamel[i] = dx*np.sum(np.abs(u_duhamel[:, 1:nx+1])**2, axis=1)
     mass_sEXP[i] = dx*np.sum(np.abs(u_sEXP[:, 1:nx+1])**2, axis=1)
-    # mass_splitting[i] = np.linalg.norm(u[:, 1:nx+1], ord=2, axis=1)**2
-    # mass_duhamel[i] = np.linalg.norm(u_duhamel[:, 1:nx+1], ord=2, axis=1)**2
 
 E_mass_splitting = 1/nc * np.sum(mass_splitting, axis=0)
 E_mass_duhamel = 1/nc * np.sum(mass_duhamel, axis=0)
@@ -124,6 +117,9 @@ E_mass_sEXP = 1/nc * np.sum(mass_sEXP, axis=0)
 
 k = np.arange(nx)
 TrQ = np.sum(gamma(k)**2)
+# E_mass_theorique = np.zeros(nt)
+# E_mass_theorique[0] = 0
+# E_mass_theorique[0] = E_mass_splitting[0]
 E_mass_theorique = E_mass_splitting[0] + t*(alpha**2)*TrQ
 
 #print(f"Tr(Q) approximé sur {nx} modes : {TrQ:.6e}")
@@ -149,16 +145,17 @@ for m in range(1, nt):
     u_det[m, 1:nx+1] = u_lin_det
     u_det[m, 0] = u_det[m, nx]
     u_det[m, nx+1] = u_det[m, 1]
+    # E_mass_theorique[m] = m*tau*alpha**2*TrQ
+    # E_mass_theorique[m] = E_mass_splitting[0] + m*tau*alpha**2*TrQ
 
 mass_det = dx * np.sum(np.abs(u_det[:, 1:nx+1])**2, axis=1)
-# mass_det = np.linalg.norm(u_det[:, 1:nx+1], ord=2, axis=1)**2
 
 # # Test 1 : Vérification de la conservation de la masse dans le cas déterministe
 # print("\nTest 1 : Conservation de la masse dans le cas déterministe")
 # print("-" * 40)
-# print(f"Masse initiale (déterministe) : {mass_det[0]:.6e}")
-# print(f"Masse finale (déterministe)   : {mass_det[-1]:.6e}")
-# print(f"Variation relative            : {abs(mass_det[-1] - mass_det[1]) / abs(mass_det[1]) * 100:.4f}%")
+print(f"Masse initiale (déterministe) : {E_mass_theorique[0]:.6e}")
+print(f"Masse finale (déterministe)   : {E_mass_theorique[-1]:.6e}")
+print(f"Variation relative            : {abs(E_mass_theorique[-1] - E_mass_theorique[1]) / abs(E_mass_theorique[1]) * 100:.4f}%")
 
 # # Test 2: Comparaison stochastique vs déterministe
 # print("\nTest 2 : Comparaison stochastique vs déterministe")
@@ -199,10 +196,10 @@ plt.plot(t, E_mass_splitting, "red", label="Espérance stochastique Splitting", 
 plt.plot(t, E_mass_duhamel, "--r", label="Espérance stochastique Duhamel", linewidth=1.5)
 plt.plot(t, E_mass_sEXP, ":r", label="Espérance stochastique sEXP", linewidth=1.5)
 plt.plot(t, E_mass_theorique, ":k", label="Espérance théorique", linewidth=1.5)
+plt.legend(fontsize="small")
+plt.title("Comparaison des espérances")
 plt.xlabel("Temps")
 plt.ylabel("Masse")
-plt.title("Comparaison des espérances")
-plt.legend(fontsize="small")
 plt.grid(True, alpha=0.3)
 
 plt.subplot(223)
