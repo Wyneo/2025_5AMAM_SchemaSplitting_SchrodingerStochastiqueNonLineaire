@@ -6,9 +6,7 @@ def u0(x):
     return u0
 
 def V(x): # external potential
-    V=np.zeros(np.shape(x)[0])
-    for k in range(np.shape(x)[0]):
-        V[k]=3.0/(5.0-4.0*np.cos(x[k]))
+    V = 3.0/(5.0-4.0*np.cos(x))
     return V
 
 def beta(nt, nx, tau):
@@ -126,21 +124,9 @@ E_mass_sEXP = 1/nc * np.sum(mass_sEXP, axis=0)
 
 k = np.arange(nx)
 TrQ = np.sum(gamma(k)**2)
-# E_mass_theorique = np.zeros(nt)
-# E_mass_theorique[0] = 0
-# E_mass_theorique[0] = E_mass_splitting[0]
 E_mass_theorique = E_mass_splitting[0] + t*(alpha**2)*TrQ
 
-#print(f"Tr(Q) approximé sur {nx} modes : {TrQ:.6e}")
-# print("\nVérification de l'espérance de la masse (schéma splitting):")
-# print("-"*50)
-# print(f"Masse initiale (E[M(u0)]) : {E_mass_splitting[0]:.6e}")
-# print(f"Masse finale (numérique)  : {E_mass_splitting[-1]:.6e}")
-# print(f"Masse finale (théorique)  : {E_mass_theorique[-1]:.6e}")
-# print(f"Différence finale         : {E_mass_splitting[-1] - E_mass_theorique[-1]:.6e}\n")
-
 # Implémentation du schéma déterministe (alpha = 0)
-# u_det = np.zeros((nt, nx+2), dtype=complex)
 u_det = init(u0(x), nt, nx, 1)
 
 for m in range(1, nt):
@@ -152,35 +138,9 @@ for m in range(1, nt):
     u_det[m, :] = u_lin_det
     u_det[m, 0] = u_det[m, nx]
     u_det[m, nx+1] = u_det[m, 1]
-    # E_mass_theorique[m] = m*tau*alpha**2*TrQ
-    # E_mass_theorique[m] = E_mass_splitting[0] + m*tau*alpha**2*TrQ
 
 mass_det = dx * np.sum(np.abs(u_det[:, 1:nx+1])**2, axis=1)
 
-# # Test 1 : Vérification de la conservation de la masse dans le cas déterministe
-# print("\nTest 1 : Conservation de la masse dans le cas déterministe")
-# print("-" * 40)
-print(f"Masse initiale (déterministe) : {E_mass_theorique[0]:.6e}")
-print(f"Masse finale (déterministe)   : {E_mass_theorique[-1]:.6e}")
-print(f"Variation relative            : {abs(E_mass_theorique[-1] - E_mass_theorique[1]) / abs(E_mass_theorique[1]) * 100:.4f}%")
-
-# # Test 2: Comparaison stochastique vs déterministe
-# print("\nTest 2 : Comparaison stochastique vs déterministe")
-# print("-" * 40)
-# print(f"E[Masse finale] (stochastique) : {E_mass_splitting[-1]:.6e}")
-# print(f"Masse finale (déterministe)    : {mass_det[-1]:.6e}")
-# print(f"Différence relative            : {abs(E_mass_splitting[-1] - mass_det[-1]) / abs(mass_det[-1]) * 100:.4f}%")
-
-# # Test 3: Vérifier que les deux méthodes donnent le même résultat en l'absence de bruit
-# print("\nTest 3 : Vérification de stabilité de la masse")
-# print("-" * 40)
-# print(f"E[Masse initiale] (stochastique) : {E_mass_splitting[0]:.6e}")
-# print(f"E[Masse finale] (stochastique)   : {E_mass_splitting[-1]:.6e}")
-# print(f"Variation E[M] relative          : {abs(E_mass_splitting[-1] - E_mass_splitting[0]) / abs(E_mass_splitting[0]) * 100:.4f}%")
-
-# # Test 4: Visualiser la solution
-# print("\nTest 4 : Comparaison des solutions")
-# print("-" * 40)
 erreur_L2_final = np.linalg.norm(u[-1, 1:nx+1] - u_duhamel[-1, 1:nx+1], ord=2)
 print("Erreur schéma splitting et formule duhamel (t=1) :", erreur_L2_final)
 print("Différence mass :", np.linalg.norm(E_mass_splitting - E_mass_theorique))
@@ -214,15 +174,15 @@ plt.plot(x, np.abs(u[0, 1:nx+1]), label="Temps 0", linewidth=1.5)
 plt.plot(x, np.abs(u[int(nt/2), 1:nx+1]), label="Temps "+str(int(nt/2)*tau), linewidth=1.5)
 plt.plot(x, np.abs(u[-1, 1:nx+1]), label="Temps "+str(T), linewidth=1.5)
 plt.legend(fontsize="small")
-plt.title("Graphique de |u| au fil de t")
+plt.title("Graphique de |u| splitting")
 plt.xlabel("x")
 plt.ylabel("u")
 plt.grid(True, alpha=0.3)
 
 plt.subplot(224)
 plt.plot(t, mass_det, "g", label="Cas déterministe (alpha=0)", linewidth=1.5)
-plt.plot(t, E_mass_splitting, "red", label="Espérance stochastique Splitting", linewidth=1.5)
-plt.plot(t, E_mass_duhamel, "--r", label="Espérance stochastique Duhamel", linewidth=1.5)
+plt.plot(t, E_mass_splitting, "red", label="Espérance stochastique splitting", linewidth=1.5)
+plt.plot(t, E_mass_duhamel, "--r", label="Espérance stochastique duhamel", linewidth=1.5)
 plt.plot(t, E_mass_sEXP, ":r", label="Espérance stochastique sEXP", linewidth=1.5)
 plt.plot(t, E_mass_theorique, ":k", label="Espérance théorique", linewidth=1.5)
 plt.legend(fontsize="small")
