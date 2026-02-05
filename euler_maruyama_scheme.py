@@ -36,6 +36,28 @@ def Wq(nt, tau, nx, x):
     W = np.sum(beta_k[:, :, None] * g[None, :, None] * E[None, :, :], axis=1)
     return W
 
+def init(f, n1, n2 = None, ite = None):
+    if n2 == None : 
+        A = np.zeros(n1+2, dtype = complex)
+        A[1:n1+1]=f
+        A[0] = A[n1]
+        A[n1+1] = A[1]
+    else : 
+        A = np.zeros((n1,n2+2), dtype = complex)
+        if len(np.shape(f)) == 1 :
+            for i in range(ite):
+                A[i,1:n2+1]=f
+                A[i,0] = A[i,n2]
+                A[i,n2+1] = A[i,1]
+        elif len(np.shape(f)) == 2 :
+            for i in range(ite):
+                A[i,1:n2+1]=f[i]
+                A[i,0] = A[i,n2]
+                A[i,n2+1] = A[i,1]
+        else :
+            print("f est de taille supérieur à 2")
+    return A
+
 alpha = 1
 nx = 2**8
 tau = 0.1
@@ -45,7 +67,7 @@ x = np.linspace(0, 2*np.pi, nx, endpoint=False)
 t = np.linspace(0, tau*(nt-1), nt)
 dx = (2.0*np.pi)/nx
 
-Vx = V(x)
+Vx = init(V(x), nx)
 
 nc = 500 # nombre de réalisations pour monte carlo
 mass = np.zeros((nc,nt))
@@ -53,18 +75,15 @@ mass = np.zeros((nc,nt))
 # Boucle Monte Carlo pour les calculs d'espérance
 for i in range(nc): 
     # Initialisation
-    u = np.zeros((nt,nx+2), dtype=complex)
-    u[0,1:nx+1] = u0(x)
-    u[0,0] = u[0,nx] # pour condition périodique : ajout factice de la dernière valeure avant la première
-    u[0,nx+1] = u[0,1]
+    u = init(u0(x), nt, nx, 1)
 
-    W = Wq(nt, tau, nx, x) # shape(nt, nx)
+    W = init(Wq(nt, tau, nx, x), nt, nx, nt) # shape(nt, nx)
 
     for n in range(1,nt):
         # Schéma de Euler-Maruyama
-        u_prev = u[n-1, 1:nx+1]
+        u_prev = u[n-1, :]
 
-        u[n, 1:nx+1] = u_prev - 1j*np.dot(laplacien(nx),u_prev) - 1j*tau*np.dot(Vx,u_prev) - 1j*alpha*W[n]
+        u[n, :] = u_prev - 1j*np.dot(laplacien(nx+2),u_prev) - 1j*tau*np.dot(Vx,u_prev) - 1j*alpha*W[n]
 
         u[n, 0] = u[n, nx] # pour périodicité
         u[n, nx+1] = u[n, 1]
