@@ -1,20 +1,20 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def u0(x):
+def u0(x): # external potential
     u0 = 2.0/(2.0 - np.cos(x))
     return u0
-
-def laplacien(nx):
-    l=np.diagflat([2 for i in range(nx)])+np.diagflat([-1 for i in range(nx-1)],1)+np.diagflat([-1 for i in range(nx-1)],-1)
-    l=l/(2*np.pi/nx)**2
-    return l
 
 def V(x): # external potential
     V=np.zeros(np.shape(x)[0])
     for i in range(np.shape(x)[0]):
         V[i]=3.0/(5.0-4.0*np.cos(x[i]))
     return V
+
+def laplacien(nx):
+    l=np.diagflat([2 for i in range(nx)])+np.diagflat([-1 for i in range(nx-1)],1)+np.diagflat([-1 for i in range(nx-1)],-1)
+    l=l/(2*np.pi/nx)**2
+    return l
 
 def beta(nt, nx, tau):
     dB = np.random.normal(0, np.sqrt(tau), size=(nt, nx))

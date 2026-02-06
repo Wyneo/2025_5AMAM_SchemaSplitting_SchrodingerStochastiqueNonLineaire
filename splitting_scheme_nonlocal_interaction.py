@@ -9,14 +9,9 @@ import matplotlib.pyplot as plt
 #     u0 = np.exp(-0.5*(x-np.pi)**2)
 #     return u0
 
-def u0(x):
+def u0(x): # nonlocal interaction
     u0 = 1/(1+(np.sin(x))**2)
     return u0
-
-def laplacien(nx):
-    l = np.diagflat([2 for i in range(nx)])+np.diagflat([-1 for i in range(nx-1)],1)+np.diagflat([-1 for i in range(nx-1)],-1)
-    l = l/(2*np.pi/nx)**2
-    return l
 
 def V(x): # nonlocal interaction
     V = np.cos(x)
@@ -204,7 +199,7 @@ plt.subplot(224)
 plt.plot(t, mass_det, "g", label="Cas déterministe (alpha=0)", linewidth=1.5)
 plt.plot(t, E_mass_splitting, "red", label="Espérance stochastique splitting", linewidth=1.5)
 plt.plot(t, E_mass_duhamel, "--r", label="Espérance stochastique duhamel", linewidth=1.5)
-plt.plot(t, E_mass_sEXP, ":r", label = "Espérance stochastic sEXP", linewidth=1.5)
+plt.plot(t, E_mass_sEXP, ":r", label = "Espérance stochastique sEXP", linewidth=1.5)
 plt.plot(t, E_mass_theorique, ":k", label="Espérance théorique", linewidth=1.5)
 plt.legend(fontsize="small")
 plt.title("Comparaison des espérances")

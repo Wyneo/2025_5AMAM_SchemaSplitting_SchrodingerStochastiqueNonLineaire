@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def u0(x):
+def u0(x): # external potential
     u0 = 2.0/(2.0 - np.cos(x))
     return u0
 
